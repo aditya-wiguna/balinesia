@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Logo-derived palette: dark navy + deep red */
+    --color-bali-dark: #0D0D0D;
+    --color-bali-red: #B22222;
+
+    /* Balinese-inspired accent palette */
+    --color-bali-gold: #C9A227;
+    --color-bali-sunset: #E85D04;
+    --color-bali-ocean: #0A9396;
+    --color-bali-jungle: #2D6A4F;
+    --color-bali-sky: #94D2BD;
+    --color-bali-rice: #FEFAE0;
+    --color-bali-brown: #8B4513;
+    --color-bali-purple: #6B21A8;
+
+    /* Semantic colors */
+    --color-primary: var(--color-bali-dark);
+    --color-secondary: var(--color-bali-red);
+    --color-accent: var(--color-bali-gold);
+    --color-success: var(--color-bali-jungle);
+    --color-info: var(--color-bali-sky);
+}
