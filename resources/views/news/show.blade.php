@@ -1,14 +1,13 @@
 @extends('layouts.app')
 
-@section('title', $article->display_title . ' - Bali News')
-
-@php
+<?php
     $ogType = 'article';
     $metaDescription = str($article->display_excerpt ?? strip_tags($article->display_content ?? ''))->limit(160)->toString();
     $canonicalUrl = route('news.show', $article);
     $ogImage = $article->image_url;
-@endsection
+?>
 
+@section('title', $article->display_title . ' - Bali News')
 @section('content')
     <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Breadcrumb -->

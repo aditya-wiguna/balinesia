@@ -1,16 +1,15 @@
 @extends('layouts.app')
 
-@section('title', $job->job_title . ' - ' . $job->company_name . ' - BaliJobs')
-
-@php
+<?php
     $ogType = 'article';
     $metaDescription = trim(strip_tags($job->description ?? $job->job_title));
     if (strlen($metaDescription) > 160) {
         $metaDescription = substr($metaDescription, 0, 157) . '...';
     }
     $canonicalUrl = route('jobs.show', $job);
-@endsection
+?>
 
+@section('title', $job->job_title . ' - ' . $job->company_name . ' - BaliJobs')
 @section('content')
     <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Breadcrumb -->

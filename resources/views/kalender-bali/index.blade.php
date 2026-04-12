@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Kalender Bali - ' . $monthName . ' ' . $year . ' | BaliNews')
-
-@php
+<?php
     $metaDescription = "Balinese Saka calendar for {$monthName} {$year}. Explore Pawukon cycles, Penanggal/Purnama/Tilem moon phases, Wuku, and sacred Balinese days.";
     $canonicalUrl = route('kalender-bali.index', ['year' => $year, 'month' => $month]);
     $ogType = 'website';
-@endsection
+?>
 
+@section('title', 'Kalender Bali - ' . $monthName . ' ' . $year . ' | BaliNews')
 @section('content')
     <!-- Hero Section -->
     <section class="relative bg-gradient-to-br from-[#2D6A4F] via-[#0A9396] to-[#1a4731] text-white overflow-hidden">

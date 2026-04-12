@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Latest News - Bali News Portal')
-
-@php
+<?php
     $metaDescription = 'Browse all latest Bali news articles, translated to English. Stay updated with stories from the Island of the Gods.';
     $canonicalUrl = route('news.latest');
     $ogType = 'website';
-@endsection
+?>
 
+@section('title', 'Latest News - Bali News Portal')
 @section('content')
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Header -->

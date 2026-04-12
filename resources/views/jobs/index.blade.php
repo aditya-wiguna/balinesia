@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Jobs in Bali - BaliJobs Portal')
-
-@php
+<?php
     $metaDescription = 'Find your dream job in Bali. Browse opportunities from top companies across the Island of the Gods — updated hourly.';
     $canonicalUrl = route('jobs.index');
     $ogType = 'website';
-@endsection
+?>
 
+@section('title', 'Jobs in Bali - BaliJobs Portal')
 @section('content')
     <!-- Hero Section -->
     <section class="relative bg-gradient-to-br from-[#2D6A4F] via-[#0A9396] to-[#1a4731] text-white overflow-hidden">

@@ -1,15 +1,14 @@
 @extends('layouts.app')
 
-@section('title', $query ? "Search: {$query} - Bali News Portal" : 'Search News - Bali News Portal')
-
-@php
+<?php
     $metaDescription = $query
         ? "Bali news search results for \"{$query}\" — find articles, stories, and updates from the Island of the Gods."
         : 'Search Bali news articles translated to English. Find stories by keyword.';
     $canonicalUrl = route('news.search', request()->only(['q', 'category']));
     $ogType = 'website';
-@endsection
+?>
 
+@section('title', $query ? "Search: {$query} - Bali News Portal" : 'Search News - Bali News Portal')
 @section('content')
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Search Header -->

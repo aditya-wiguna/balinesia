@@ -1,13 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Bali News Portal - Latest Bali News in English')
-
-@php
+<?php
     $metaDescription = 'Discover Bali\'s stories translated to English. Stay informed with the latest news from the Island of the Gods — politics, culture, tourism, and more.';
     $canonicalUrl = route('news.index');
     $ogType = 'website';
-@endsection
+?>
 
+@section('title', 'Bali News Portal - Latest Bali News in English')
 @section('content')
     <!-- Hero Section -->
     <section class="relative bg-gradient-to-br from-[#0A9396] via-[#2D6A4F] to-[#1a4731] text-white overflow-hidden">
