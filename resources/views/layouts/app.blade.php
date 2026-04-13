@@ -60,11 +60,29 @@
                 </div>
 
                 <!-- Mobile Menu Button -->
-                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100" aria-label="Open menu" aria-expanded="false">
+                    <svg class="w-6 h-6 menu-open-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
+                    <svg class="w-6 h-6 menu-close-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                 </button>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="md:hidden hidden pb-4 border-t border-gray-100 pt-3">
+                <nav class="flex flex-col gap-1">
+                    <a href="/" class="px-4 py-3 rounded-lg text-gray-700 hover:bg-[#B22222]/5 hover:text-[#B22222] font-medium transition-colors">
+                        News
+                    </a>
+                    <a href="{{ route('jobs.index') }}" class="px-4 py-3 rounded-lg text-gray-700 hover:bg-[#B22222]/5 hover:text-[#B22222] font-medium transition-colors">
+                        Jobs
+                    </a>
+                    <a href="{{ route('kalender-bali.index') }}" class="px-4 py-3 rounded-lg text-gray-700 hover:bg-[#B22222]/5 hover:text-[#B22222] font-medium transition-colors">
+                        Kalender
+                    </a>
+                </nav>
             </div>
 
             <!-- Mobile Search -->
