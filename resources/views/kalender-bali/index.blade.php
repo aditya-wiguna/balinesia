@@ -72,6 +72,11 @@
     </div>
 </section>
 
+<!-- Ad Banner: kalender_top -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <x-ad-banner position="kalender_top" />
+</div>
+
 <!-- ─── MAIN CONTENT ─── -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
