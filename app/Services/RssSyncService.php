@@ -35,7 +35,7 @@ class RssSyncService
         $feedUrl = $source->config['feed_url'] ?? null;
 
         if (! $feedUrl) {
-            Log::warning("RssSyncService: No feed_url in config for source {$source->name}");
+            Log::warning("RssSyncService: No feed_url in config for source {$source->name} [id={$source->id}]");
 
             return 0;
         }
@@ -44,13 +44,20 @@ class RssSyncService
             $response = Http::timeout(20)
                 ->connectTimeout(10)
                 ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; BaliNewsBot/1.0)',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
                     'Accept' => 'application/rss+xml, application/xml, text/xml, */*',
+                    'Accept-Language' => 'en-US,en;q=0.9,id;q=0.8',
                 ])
                 ->get($feedUrl);
 
+            if ($response->status() === 403 || $response->status() === 401) {
+                Log::warning("RssSyncService: Source {$source->name} blocked (HTTP {$response->status()}). Consider disabling or checking Cloudflare settings for: {$feedUrl}");
+
+                return 0;
+            }
+
             if (! $response->successful()) {
-                Log::warning("RssSyncService: HTTP {$response->status()} for {$feedUrl}");
+                Log::warning("RssSyncService: HTTP {$response->status()} for {$source->name} — {$feedUrl}");
 
                 return 0;
             }
@@ -58,12 +65,18 @@ class RssSyncService
             $xml = @simplexml_load_string($response->body());
 
             if (! $xml) {
-                Log::warning("RssSyncService: Could not parse XML from {$feedUrl}");
+                Log::warning("RssSyncService: Could not parse XML from {$source->name} — {$feedUrl}");
 
                 return 0;
             }
 
             $items = $this->extractItems($xml);
+
+            if (empty($items)) {
+                Log::info("RssSyncService: No items found in feed {$source->name} — {$feedUrl}");
+
+                return 0;
+            }
 
             return $this->processItems($source, $items);
         } catch (\Throwable $e) {
