@@ -11,6 +11,7 @@ class NewsSourceSeeder extends Seeder
     public function run(): void
     {
         $sources = [
+            // Indonesian-language feeds
             [
                 'name' => 'ANTARA News Bali',
                 'url' => 'https://bali.antaranews.com',
@@ -52,6 +53,42 @@ class NewsSourceSeeder extends Seeder
                 'language' => 'id',
                 'is_active' => true,
                 'config' => ['feed_url' => 'https://bali.antaranews.com/rss/olahraga.xml'],
+            ],
+            [
+                'name' => 'Bali Satu Berita',
+                'url' => 'https://balisatuberita.com',
+                'language' => 'id',
+                'is_active' => true,
+                'config' => ['feed_url' => 'https://balisatuberita.com/rss/latest-posts'],
+            ],
+            // English-language feeds
+            [
+                'name' => 'The Bali Sun',
+                'url' => 'https://thebalisun.com',
+                'language' => 'en',
+                'is_active' => true,
+                'config' => ['feed_url' => 'https://thebalisun.com/feed'],
+            ],
+            [
+                'name' => 'NOW! Bali',
+                'url' => 'https://nowbali.co.id',
+                'language' => 'en',
+                'is_active' => true,
+                'config' => ['feed_url' => 'https://nowbali.co.id/feed'],
+            ],
+            [
+                'name' => 'The Beat Bali',
+                'url' => 'https://thebeatbali.com',
+                'language' => 'en',
+                'is_active' => true,
+                'config' => ['feed_url' => 'https://thebeatbali.com/feed'],
+            ],
+            [
+                'name' => 'Budaya Bali',
+                'url' => 'https://budayabali.com',
+                'language' => 'id',
+                'is_active' => true,
+                'config' => ['feed_url' => 'https://budayabali.com/rss/latest-posts'],
             ],
         ];
 
