@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Log;
 class NewsSyncService
 {
     public function __construct(
-        private readonly TranslationService $translationService
+        private readonly TranslationService $translationService,
+        private readonly ArticleContentFetcher $contentFetcher
     ) {}
 
     public function syncSource(NewsSource $source): int
@@ -93,6 +94,7 @@ class NewsSyncService
             'is_approved' => true,
         ]);
 
+        $this->contentFetcher->fetchAndSave($article);
         $this->translationService->translateArticle($article);
 
         return true;

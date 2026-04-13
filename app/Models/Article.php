@@ -30,6 +30,7 @@ class Article extends Model
         'is_featured',
         'is_approved',
         'synced_at',
+        'content_fetched_at',
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class Article extends Model
             'is_approved' => 'boolean',
             'published_at' => 'datetime',
             'synced_at' => 'datetime',
+            'content_fetched_at' => 'datetime',
         ];
     }
 
