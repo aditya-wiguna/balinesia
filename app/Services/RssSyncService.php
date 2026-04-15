@@ -62,10 +62,18 @@ class RssSyncService
                 return 0;
             }
 
-            $xml = @simplexml_load_string($response->body());
+            $body = $response->body();
+
+            if (str_starts_with(trim($body), '<!DOCTYPE') || str_starts_with(trim($body), '<html')) {
+                Log::warning("RssSyncService: Received HTML instead of XML from {$source->name} — {$feedUrl}. Feed may be blocked (Cloudflare).");
+
+                return 0;
+            }
+
+            $xml = @simplexml_load_string($body);
 
             if (! $xml) {
-                Log::warning("RssSyncService: Could not parse XML from {$source->name} — {$feedUrl}");
+                Log::warning("RssSyncService: Could not parse XML from {$source->name} — {$feedUrl}. Body preview: ".substr($body, 0, 200));
 
                 return 0;
             }
@@ -194,7 +202,12 @@ class RssSyncService
                 continue;
             }
 
-            // Skip if already exists by source_url
+            $externalId = $item['guid'] ?? null;
+
+            if (Article::where('news_source_id', $source->id)->where('external_id', $externalId)->exists()) {
+                continue;
+            }
+
             if (Article::where('source_url', $item['source_url'])->exists()) {
                 continue;
             }

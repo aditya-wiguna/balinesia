@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\Article;
+use DOMDocument;
+use DOMNode;
+use DOMNodeList;
+use DOMXPath;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -15,46 +19,54 @@ class ArticleContentFetcher
 
     private const CACHE_TTL_SECONDS = 86400;
 
-    private const DEFAULT_SELECTORS = [
-        'article' => [
-            'article[itemprop=articleBody]',
-            'article.entry-content',
-            'article.post-content',
-            'article.content',
-            '.article-body',
-            '.entry-content',
-            '.post-content',
-            '.article-content',
-            '.single-content',
-            '.post-body',
-            'article',
-            '.content',
-            'main',
-        ],
-        'title' => [
-            'h1.entry-title',
-            'h1.post-title',
-            'h1.article-title',
-            'h1[itemprop=headline]',
-            '.entry-title',
-            '.post-title',
-            'article h1',
-            'h1',
-        ],
-        'author' => [
-            'span[itemprop=author]',
-            '.author-name',
-            '.byline',
-            '.post-author',
-            '.article-author',
-            '[rel=author]',
-        ],
-        'published_time' => [
-            'time[itemprop=datePublished]',
-            'time.entry-date',
-            '.post-date',
-            '.published',
-        ],
+    private const CONTENT_SELECTORS = [
+        'article[itemprop=articleBody]',
+        'article.entry-content',
+        'article.post-content',
+        'article.content',
+        '.article-body',
+        '.entry-content',
+        '.post-content',
+        '.article-content',
+        '.single-content',
+        '.post-body',
+        'article',
+        '.content',
+        'main',
+    ];
+
+    private const TITLE_SELECTORS = [
+        'h1.entry-title',
+        'h1.post-title',
+        'h1.article-title',
+        'h1[itemprop=headline]',
+        '.entry-title',
+        '.post-title',
+        'article h1',
+        'h1',
+    ];
+
+    private const AUTHOR_SELECTORS = [
+        'span[itemprop=author]',
+        '.author-name',
+        '.byline',
+        '.post-author',
+        '.article-author',
+        '[rel=author]',
+    ];
+
+    private const PUBLISHED_SELECTORS = [
+        'time[itemprop=datePublished]',
+        'time.entry-date',
+        '.post-date',
+        '.published',
+    ];
+
+    private const EXCERPT_SELECTORS = [
+        '.entry-excerpt',
+        '.article-excerpt',
+        '.post-excerpt',
+        '.excerpt',
     ];
 
     public function fetchAndSave(Article $article): bool
@@ -120,9 +132,6 @@ class ArticleContentFetcher
                     'Connection' => 'keep-alive',
                     'Upgrade-Insecure-Requests' => '1',
                 ])
-                ->withCookies([
-                    'euconsent' => 'COMPLETED',
-                ], parse_url($url, PHP_URL_HOST))
                 ->get($url);
 
             if (! $response->successful()) {
@@ -167,31 +176,80 @@ class ArticleContentFetcher
         return array_filter($result, fn ($v) => $v !== null && $v !== '');
     }
 
-    private function loadHtml(string $html): ?\DOMDocument
+    private function loadHtml(string $html): ?DOMDocument
     {
         libxml_use_internal_errors(true);
-        $dom = new \DOMDocument;
-
+        $dom = new DOMDocument;
         $dom->preserveWhiteSpace = false;
 
+        $encoded = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
+
         if (defined('LIBXML_HTML_NOIMPLIED')) {
-            $result = @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            @$dom->loadHTML($encoded, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         } else {
-            $result = @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+            @$dom->loadHTML($encoded);
         }
 
         libxml_clear_errors();
         libxml_use_internal_errors(false);
 
-        return $result ? $dom : null;
+        return $dom;
     }
 
-    private function extractTitle(\DOMDocument $dom): ?string
+    private function xpath(DOMDocument $dom, string $expression): DOMNodeList|false
     {
-        foreach (self::DEFAULT_SELECTORS['title'] as $selector) {
-            $node = $dom->querySelector($selector);
-            if ($node) {
-                $title = trim($node->textContent);
+        $xpath = new DOMXPath($dom);
+
+        return $xpath->query($expression);
+    }
+
+    private function cssToXPath(string $css): string
+    {
+        $css = trim($css);
+
+        $xpath = '';
+        $remaining = $css;
+
+        while (strlen($remaining) > 0) {
+            if (preg_match('/^([a-zA-Z][a-zA-Z0-9]*)?(\[[^\]]+\])?/i', $remaining, $m)) {
+                $tag = $m[1] ?? '*';
+
+                if (isset($m[2]) && preg_match_all('/\[([^\]]+)\]/', $m[2], $attrMatches)) {
+                    foreach ($attrMatches[1] as $attr) {
+                        if (preg_match('/^([a-zA-Z-]+)([~|^$*]?=)?"?([^"]*)"?$/', $attr, $am)) {
+                            $attrName = $am[1];
+                            $op = $am[2] ?? '=';
+                            $val = $am[3] ?? '';
+
+                            $xpath .= "[@{$attrName}{$op}'{$val}']";
+                        } else {
+                            $xpath .= "[@{$attr}]";
+                        }
+                    }
+                }
+
+                $xpath .= "//{$tag}";
+                $remaining = substr($remaining, strlen($m[0]));
+            } else {
+                break;
+            }
+        }
+
+        if ($xpath === '' || $xpath[0] !== '/') {
+            $xpath = '//'.ltrim($xpath, '/');
+        }
+
+        return $xpath;
+    }
+
+    private function extractTitle(DOMDocument $dom): ?string
+    {
+        foreach (self::TITLE_SELECTORS as $selector) {
+            $xpathExpr = $this->cssToXPath($selector);
+            $nodes = $this->xpath($dom, $xpathExpr);
+
+            if ($nodes && $nodes->length > 0) {
+                $title = trim($nodes->item(0)?->textContent ?? '');
 
                 if (mb_strlen($title) > 10 && mb_strlen($title) < 500) {
                     return $title;
@@ -199,22 +257,28 @@ class ArticleContentFetcher
             }
         }
 
-        $h1 = $dom->getElementsByTagName('h1')->item(0);
+        $h1List = $dom->getElementsByTagName('h1');
+        if ($h1List->length > 0) {
+            return trim($h1List->item(0)?->textContent ?? '');
+        }
 
-        return $h1 ? trim($h1->textContent) : null;
+        return null;
     }
 
-    private function extractContent(\DOMDocument $dom): ?string
+    private function extractContent(DOMDocument $dom): ?string
     {
-        foreach (self::DEFAULT_SELECTORS['article'] as $selector) {
-            $node = $dom->querySelector($selector);
-            if ($node) {
-                $html = $this->innerHtml($node);
+        foreach (self::CONTENT_SELECTORS as $selector) {
+            $xpathExpr = $this->cssToXPath($selector);
+            $nodes = $this->xpath($dom, $xpathExpr);
 
-                if (mb_strlen(strip_tags($html)) > 200) {
-                    $cleaned = $this->cleanContent($html);
+            if ($nodes && $nodes->length > 0) {
+                foreach ($nodes as $node) {
+                    $html = $this->innerHtml($node);
+                    $textLen = mb_strlen(strip_tags($html));
 
-                    return $cleaned;
+                    if ($textLen > 200) {
+                        return $this->cleanContent($html);
+                    }
                 }
             }
         }
@@ -232,7 +296,6 @@ class ArticleContentFetcher
         $main = $dom->getElementsByTagName('main');
         if ($main->length > 0) {
             $html = $this->innerHtml($main->item(0));
-
             if (mb_strlen(strip_tags($html)) > 200) {
                 return $this->cleanContent($html);
             }
@@ -241,7 +304,6 @@ class ArticleContentFetcher
         $body = $dom->getElementsByTagName('body');
         if ($body->length > 0) {
             $html = $this->innerHtml($body->item(0));
-
             if (mb_strlen(strip_tags($html)) > 200) {
                 return $this->cleanContent($html);
             }
@@ -250,45 +312,46 @@ class ArticleContentFetcher
         return null;
     }
 
-    private function extractExcerpt(\DOMDocument $dom): ?string
+    private function extractExcerpt(DOMDocument $dom): ?string
     {
-        $selectors = [
-            '.entry-excerpt',
-            '.article-excerpt',
-            '.post-excerpt',
-            '.excerpt',
-            '[itemprop=description]',
-            'meta[name=description]',
-            'meta[property=og:description]',
-        ];
+        foreach (self::EXCERPT_SELECTORS as $selector) {
+            $xpathExpr = $this->cssToXPath($selector);
+            $nodes = $this->xpath($dom, $xpathExpr);
 
-        foreach ($selectors as $selector) {
-            $node = $dom->querySelector($selector);
-            if ($node) {
-                if ($node instanceof \DOMElement && ($node->tagName === 'meta')) {
-                    $content = $node->getAttribute('content');
-
-                    if ($content) {
-                        return $this->cleanText($content);
-                    }
-                }
-
-                $text = trim($node->textContent);
+            if ($nodes && $nodes->length > 0) {
+                $text = trim($nodes->item(0)?->textContent ?? '');
                 if ($text) {
                     return $this->cleanText($text);
                 }
             }
         }
 
+        $metaDesc = $this->xpath($dom, "//meta[@name='description']/@content");
+        if ($metaDesc && $metaDesc->length > 0) {
+            return $this->cleanText($metaDesc->item(0)?->nodeValue ?? '');
+        }
+
+        $ogDesc = $this->xpath($dom, "//meta[@property='og:description']/@content");
+        if ($ogDesc && $ogDesc->length > 0) {
+            return $this->cleanText($ogDesc->item(0)?->nodeValue ?? '');
+        }
+
+        $itemPropDesc = $this->xpath($dom, "//*[@itemprop='description']");
+        if ($itemPropDesc && $itemPropDesc->length > 0) {
+            return $this->cleanText($itemPropDesc->item(0)?->textContent ?? '');
+        }
+
         return null;
     }
 
-    private function extractAuthor(\DOMDocument $dom): ?string
+    private function extractAuthor(DOMDocument $dom): ?string
     {
-        foreach (self::DEFAULT_SELECTORS['author'] as $selector) {
-            $node = $dom->querySelector($selector);
-            if ($node) {
-                $author = trim($node->textContent);
+        foreach (self::AUTHOR_SELECTORS as $selector) {
+            $xpathExpr = $this->cssToXPath($selector);
+            $nodes = $this->xpath($dom, $xpathExpr);
+
+            if ($nodes && $nodes->length > 0) {
+                $author = trim($nodes->item(0)?->textContent ?? '');
                 if ($author && mb_strlen($author) < 100) {
                     return $this->cleanText($author);
                 }
@@ -298,55 +361,71 @@ class ArticleContentFetcher
         return null;
     }
 
-    private function extractPublishedTime(\DOMDocument $dom): ?string
+    private function extractPublishedTime(DOMDocument $dom): ?string
     {
-        foreach (self::DEFAULT_SELECTORS['published_time'] as $selector) {
-            $node = $dom->querySelector($selector);
-            if ($node) {
-                if ($node instanceof \DOMElement && $node->hasAttribute('datetime')) {
-                    return $node->getAttribute('datetime');
-                }
+        foreach (self::PUBLISHED_SELECTORS as $selector) {
+            $xpathExpr = $this->cssToXPath($selector);
+            $nodes = $this->xpath($dom, $xpathExpr);
 
-                if ($node instanceof \DOMElement && $node->hasAttribute('content')) {
-                    return $node->getAttribute('content');
-                }
+            if ($nodes && $nodes->length > 0) {
+                $node = $nodes->item(0);
+                if ($node instanceof DOMNode) {
+                    $datetime = $node->attributes?->getNamedItem('datetime')?->nodeValue;
+                    if ($datetime) {
+                        return $datetime;
+                    }
 
-                $text = trim($node->textContent);
-                if ($text) {
-                    return $text;
+                    $content = $node->attributes?->getNamedItem('content')?->nodeValue;
+                    if ($content) {
+                        return $content;
+                    }
+
+                    $text = trim($node->textContent ?? '');
+                    if ($text) {
+                        return $text;
+                    }
                 }
             }
         }
 
-        $meta = $dom->querySelector('meta[property=article:published_time]');
-        if ($meta) {
-            return $meta->getAttribute('content');
+        $metaTime = $this->xpath($dom, "//meta[@property='article:published_time']/@content");
+        if ($metaTime && $metaTime->length > 0) {
+            return $metaTime->item(0)?->nodeValue;
         }
 
         return null;
     }
 
-    private function extractMainImage(\DOMDocument $dom, string $sourceUrl): ?string
+    private function extractMainImage(DOMDocument $dom, string $sourceUrl): ?string
     {
-        $ogImage = $dom->querySelector('meta[property=og:image]');
-        if ($ogImage && $ogImage->getAttribute('content')) {
-            return $this->makeAbsoluteUrl($ogImage->getAttribute('content'), $sourceUrl);
+        $ogImage = $this->xpath($dom, "//meta[@property='og:image']/@content");
+        if ($ogImage && $ogImage->length > 0) {
+            $url = $ogImage->item(0)?->nodeValue;
+            if ($url) {
+                return $this->makeAbsoluteUrl($url, $sourceUrl);
+            }
         }
 
-        $twitterImage = $dom->querySelector('meta[name=twitter:image]');
-        if ($twitterImage && $twitterImage->getAttribute('content')) {
-            return $this->makeAbsoluteUrl($twitterImage->getAttribute('content'), $sourceUrl);
+        $twitterImage = $this->xpath($dom, "//meta[@name='twitter:image']/@content");
+        if ($twitterImage && $twitterImage->length > 0) {
+            $url = $twitterImage->item(0)?->nodeValue;
+            if ($url) {
+                return $this->makeAbsoluteUrl($url, $sourceUrl);
+            }
         }
 
-        $firstImg = $dom->querySelector('article img, .post-content img, .entry-content img');
-        if ($firstImg && $firstImg->getAttribute('src')) {
-            return $this->makeAbsoluteUrl($firstImg->getAttribute('src'), $sourceUrl);
+        $firstImg = $this->xpath($dom, "//article//img | //*[@class='post-content']//img | //*[@class='entry-content']//img");
+        if ($firstImg && $firstImg->length > 0) {
+            $src = $firstImg->item(0)?->attributes?->getNamedItem('src')?->nodeValue;
+            if ($src) {
+                return $this->makeAbsoluteUrl($src, $sourceUrl);
+            }
         }
 
         return null;
     }
 
-    private function innerHtml(\DOMNode $node): string
+    private function innerHtml(DOMNode $node): string
     {
         $html = '';
         foreach ($node->childNodes as $child) {
@@ -426,7 +505,10 @@ class ArticleContentFetcher
             ->orWhereNull('content');
 
         if (! $force) {
-            $query->whereNull('synced_at')->orWhere('synced_at', '>', now()->subDay());
+            $query->where(function ($q) {
+                $q->whereNull('synced_at')
+                    ->orWhere('synced_at', '>', now()->subDay());
+            });
         }
 
         if ($limit > 0) {
